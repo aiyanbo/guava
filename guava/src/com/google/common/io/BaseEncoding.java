@@ -145,6 +145,7 @@ public abstract class BaseEncoding {
   /**
    * Encodes the specified byte array, and returns the encoded {@code String}.
    */
+  @CheckReturnValue
   public String encode(byte[] bytes) {
     return encode(bytes, 0, bytes.length);
   }
@@ -153,6 +154,7 @@ public abstract class BaseEncoding {
    * Encodes the specified range of the specified byte array, and returns the encoded
    * {@code String}.
    */
+  @CheckReturnValue
   public final String encode(byte[] bytes, int off, int len) {
     checkPositionIndexes(off, off + len, bytes.length);
     StringBuilder result = new StringBuilder(maxEncodedSize(len));
@@ -169,13 +171,15 @@ public abstract class BaseEncoding {
    * {@code Writer}.  When the returned {@code OutputStream} is closed, so is the backing
    * {@code Writer}.
    */
-  @GwtIncompatible("Writer,OutputStream")
+  @GwtIncompatible // Writer,OutputStream
+  @CheckReturnValue
   public abstract OutputStream encodingStream(Writer writer);
 
   /**
    * Returns a {@code ByteSink} that writes base-encoded bytes to the specified {@code CharSink}.
    */
-  @GwtIncompatible("ByteSink,CharSink")
+  @GwtIncompatible // ByteSink,CharSink
+  @CheckReturnValue
   public final ByteSink encodingSink(final CharSink encodedSink) {
     checkNotNull(encodedSink);
     return new ByteSink() {
@@ -199,12 +203,20 @@ public abstract class BaseEncoding {
   }
 
   /**
+   * Determines whether the specified character sequence is a valid encoded string according to this
+   * encoding.
+   */
+  @CheckReturnValue
+  public abstract boolean canDecode(CharSequence chars);
+
+  /**
    * Decodes the specified character sequence, and returns the resulting {@code byte[]}.
    * This is the inverse operation to {@link #encode(byte[])}.
    *
    * @throws IllegalArgumentException if the input is not a valid encoded string according to this
    *         encoding.
    */
+  @CheckReturnValue
   public final byte[] decode(CharSequence chars) {
     try {
       return decodeChecked(chars);
@@ -220,7 +232,8 @@ public abstract class BaseEncoding {
    * @throws DecodingException if the input is not a valid encoded string according to this
    *         encoding.
    */
-  final byte[] decodeChecked(CharSequence chars) throws DecodingException {
+  @CheckReturnValue final byte[] decodeChecked(CharSequence chars)
+      throws DecodingException {
     chars = padding().trimTrailingFrom(chars);
     byte[] tmp = new byte[maxDecodedSize(chars.length())];
     int len = decodeTo(tmp, chars);
@@ -232,14 +245,16 @@ public abstract class BaseEncoding {
    * {@code Reader}.  The returned stream throws a {@link DecodingException} upon decoding-specific
    * errors.
    */
-  @GwtIncompatible("Reader,InputStream")
+  @GwtIncompatible // Reader,InputStream
+  @CheckReturnValue
   public abstract InputStream decodingStream(Reader reader);
 
   /**
    * Returns a {@code ByteSource} that reads base-encoded bytes from the specified
    * {@code CharSource}.
    */
-  @GwtIncompatible("ByteSource,CharSource")
+  @GwtIncompatible // ByteSource,CharSource
+  @CheckReturnValue
   public final ByteSource decodingSource(final CharSource encodedSource) {
     checkNotNull(encodedSource);
     return new ByteSource() {
@@ -330,6 +345,7 @@ public abstract class BaseEncoding {
    * href="http://tools.ietf.org/html/rfc4648#section-3.1"> RFC 4648 section 3.1</a>, Line Feeds in
    * Encoded Data. Line feeds may be added using {@link #withSeparator(String, int)}.
    */
+  @CheckReturnValue
   public static BaseEncoding base64() {
     return BASE64;
   }
@@ -351,6 +367,7 @@ public abstract class BaseEncoding {
    * href="http://tools.ietf.org/html/rfc4648#section-3.1"> RFC 4648 section 3.1</a>, Line Feeds in
    * Encoded Data. Line feeds may be added using {@link #withSeparator(String, int)}.
    */
+  @CheckReturnValue
   public static BaseEncoding base64Url() {
     return BASE64_URL;
   }
@@ -371,6 +388,7 @@ public abstract class BaseEncoding {
    * href="http://tools.ietf.org/html/rfc4648#section-3.1"> RFC 4648 section 3.1</a>, Line Feeds in
    * Encoded Data. Line feeds may be added using {@link #withSeparator(String, int)}.
    */
+  @CheckReturnValue
   public static BaseEncoding base32() {
     return BASE32;
   }
@@ -390,6 +408,7 @@ public abstract class BaseEncoding {
    * href="http://tools.ietf.org/html/rfc4648#section-3.1"> RFC 4648 section 3.1</a>, Line Feeds in
    * Encoded Data. Line feeds may be added using {@link #withSeparator(String, int)}.
    */
+  @CheckReturnValue
   public static BaseEncoding base32Hex() {
     return BASE32_HEX;
   }
@@ -410,6 +429,7 @@ public abstract class BaseEncoding {
    * href="http://tools.ietf.org/html/rfc4648#section-3.1"> RFC 4648 section 3.1</a>, Line Feeds in
    * Encoded Data. Line feeds may be added using {@link #withSeparator(String, int)}.
    */
+  @CheckReturnValue
   public static BaseEncoding base16() {
     return BASE16;
   }
@@ -467,6 +487,10 @@ public abstract class BaseEncoding {
 
     boolean isValidPaddingStartPosition(int index) {
       return validPadding[index % charsPerChunk];
+    }
+
+    boolean canDecode(char ch) {
+      return ch <= Ascii.MAX && decodabet[ch] != -1;
     }
 
     int decode(char ch) throws DecodingException {
@@ -560,7 +584,7 @@ public abstract class BaseEncoding {
       return alphabet.charsPerChunk * divide(bytes, alphabet.bytesPerChunk, CEILING);
     }
 
-    @GwtIncompatible("Writer,OutputStream")
+    @GwtIncompatible // Writer,OutputStream
     @Override
     public OutputStream encodingStream(final Writer out) {
       checkNotNull(out);
@@ -648,6 +672,20 @@ public abstract class BaseEncoding {
     }
 
     @Override
+    public boolean canDecode(CharSequence chars) {
+      chars = padding().trimTrailingFrom(chars);
+      if (!alphabet.isValidPaddingStartPosition(chars.length())) {
+        return false;
+      }
+      for (int i = 0; i < chars.length(); i++) {
+        if (!alphabet.canDecode(chars.charAt(i))) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    @Override
     int decodeTo(byte[] target, CharSequence chars) throws DecodingException {
       checkNotNull(target);
       chars = padding().trimTrailingFrom(chars);
@@ -672,7 +710,7 @@ public abstract class BaseEncoding {
       return bytesWritten;
     }
 
-    @GwtIncompatible("Reader,InputStream")
+    @GwtIncompatible // Reader,InputStream
     @Override
     public InputStream decodingStream(final Reader reader) {
       checkNotNull(reader);
@@ -894,7 +932,7 @@ public abstract class BaseEncoding {
     }
   }
 
-  @GwtIncompatible("Reader")
+  @GwtIncompatible // Reader
   static Reader ignoringReader(final Reader delegate, final CharMatcher toIgnore) {
     checkNotNull(delegate);
     checkNotNull(toIgnore);
@@ -951,7 +989,7 @@ public abstract class BaseEncoding {
     };
   }
 
-  @GwtIncompatible("Writer")
+  @GwtIncompatible // Writer
   static Writer separatingWriter(
       final Writer delegate, final String separator, final int afterEveryChars) {
     final Appendable seperatingAppendable =
@@ -1006,7 +1044,7 @@ public abstract class BaseEncoding {
           * divide(Math.max(0, unseparatedSize - 1), afterEveryChars, FLOOR);
     }
 
-    @GwtIncompatible("Writer,OutputStream")
+    @GwtIncompatible // Writer,OutputStream
     @Override
     public OutputStream encodingStream(final Writer output) {
       return delegate.encodingStream(separatingWriter(output, separator, afterEveryChars));
@@ -1023,11 +1061,16 @@ public abstract class BaseEncoding {
     }
 
     @Override
+    public boolean canDecode(CharSequence chars) {
+      return delegate.canDecode(separatorChars.removeFrom(chars));
+    }
+
+    @Override
     int decodeTo(byte[] target, CharSequence chars) throws DecodingException {
       return delegate.decodeTo(target, separatorChars.removeFrom(chars));
     }
 
-    @GwtIncompatible("Reader,InputStream")
+    @GwtIncompatible // Reader,InputStream
     @Override
     public InputStream decodingStream(final Reader reader) {
       return delegate.decodingStream(ignoringReader(reader, separatorChars));

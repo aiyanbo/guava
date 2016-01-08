@@ -21,6 +21,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableList;
 
 import com.google.common.annotations.Beta;
+import com.google.common.annotations.GwtIncompatible;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.PrintWriter;
@@ -45,6 +46,7 @@ import javax.annotation.Nullable;
  * @author Ben Yu
  * @since 1.0
  */
+@GwtIncompatible
 public final class Throwables {
   private Throwables() {}
 
@@ -136,9 +138,9 @@ public final class Throwables {
    * Propagates {@code throwable} as-is if it is an instance of {@link RuntimeException} or {@link
    * Error}, or else as a last resort, wraps it in a {@code RuntimeException} and then propagates.
    * <p>
-   * This method always throws an exception. The {@code RuntimeException} return type is only for
-   * client code to make Java type system happy in case a return value is required by the enclosing
-   * method. Example usage:
+   * This method always throws an exception. The {@code RuntimeException} return type
+   * allows client code to signal to the compiler that statements after the call are
+   * unreachable. Example usage:
    * <pre>
    *   T doSomething() {
    *     try {

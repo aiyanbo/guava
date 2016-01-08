@@ -321,16 +321,7 @@ public final class Floats {
   public static float[] ensureCapacity(float[] array, int minLength, int padding) {
     checkArgument(minLength >= 0, "Invalid minLength: %s", minLength);
     checkArgument(padding >= 0, "Invalid padding: %s", padding);
-    return (array.length < minLength)
-        ? copyOf(array, minLength + padding)
-        : array;
-  }
-
-  // Arrays.copyOf() requires Java 6
-  private static float[] copyOf(float[] original, int length) {
-    float[] copy = new float[length];
-    System.arraycopy(original, 0, copy, 0, Math.min(original.length, length));
-    return copy;
+    return (array.length < minLength) ? Arrays.copyOf(array, minLength + padding) : array;
   }
 
   /**
@@ -395,6 +386,11 @@ public final class Floats {
         }
       }
       return left.length - right.length;
+    }
+
+    @Override
+    public String toString() {
+      return "Floats.lexicographicalComparator()";
     }
   }
 
@@ -607,7 +603,7 @@ public final class Floats {
   @Beta
   @Nullable
   @CheckForNull
-  @GwtIncompatible("regular expressions")
+  @GwtIncompatible // regular expressions
   public static Float tryParse(String string) {
     if (Doubles.FLOATING_POINT_PATTERN.matcher(string).matches()) {
       // TODO(lowasser): could be potentially optimized, but only with

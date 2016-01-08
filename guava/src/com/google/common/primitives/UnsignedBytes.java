@@ -20,6 +20,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.common.annotations.Beta;
+import com.google.common.annotations.GwtIncompatible;
 import com.google.common.annotations.VisibleForTesting;
 
 import sun.misc.Unsafe;
@@ -46,6 +47,7 @@ import javax.annotation.CheckReturnValue;
  * @author Louis Wasserman
  * @since 1.0
  */
+@GwtIncompatible
 public final class UnsignedBytes {
   private UnsignedBytes() {}
 
@@ -406,7 +408,7 @@ public final class UnsignedBytes {
              * shift to get that least significant nonzero byte.
              */
             int n = Long.numberOfTrailingZeros(lw ^ rw) & ~0x7;
-            return (int) (((lw >>> n) & UNSIGNED_MASK) - ((rw >>> n) & UNSIGNED_MASK));
+            return ((int) ((lw >>> n) & UNSIGNED_MASK)) - ((int) ((rw >>> n) & UNSIGNED_MASK));
           }
         }
 
@@ -418,6 +420,11 @@ public final class UnsignedBytes {
           }
         }
         return left.length - right.length;
+      }
+
+      @Override
+      public String toString() {
+        return "UnsignedBytes.lexicographicalComparator() (sun.misc.Unsafe version)";
       }
     }
 
@@ -434,6 +441,11 @@ public final class UnsignedBytes {
           }
         }
         return left.length - right.length;
+      }
+
+      @Override
+      public String toString() {
+        return "UnsignedBytes.lexicographicalComparator() (pure Java version)";
       }
     }
 

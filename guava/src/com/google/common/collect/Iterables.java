@@ -159,6 +159,10 @@ public final class Iterables {
    * Removes, from an iterable, every element that satisfies the provided
    * predicate.
    *
+   * <p>Removals may or may not happen immediately as each element is tested
+   * against the predicate.  The behavior of this method is not specified if
+   * {@code predicate} is dependent on {@code removeFrom}.
+   *
    * @param removeFrom the iterable to (potentially) remove elements from
    * @param predicate a predicate that determines whether an element should
    *     be removed
@@ -177,8 +181,10 @@ public final class Iterables {
 
   private static <T> boolean removeIfFromRandomAccessList(
       List<T> list, Predicate<? super T> predicate) {
-    // Note: Not all random access lists support set() so we need to deal with
-    // those that don't and attempt the slower remove() based solution.
+    // Note: Not all random access lists support set(). Additionally, it's possible
+    // for a list to reject setting an element, such as when the list does not permit
+    // duplicate elements. For both of those cases,  we need to fall back to a slower
+    // implementation.
     int from = 0;
     int to = 0;
 
@@ -189,6 +195,9 @@ public final class Iterables {
           try {
             list.set(to, element);
           } catch (UnsupportedOperationException e) {
+            slowRemoveIfForRemainingElements(list, predicate, to, from);
+            return true;
+          } catch (IllegalArgumentException e) {
             slowRemoveIfForRemainingElements(list, predicate, to, from);
             return true;
           }
@@ -304,15 +313,13 @@ public final class Iterables {
    * @return a newly-allocated array into which all the elements of the iterable
    *     have been copied
    */
-  @GwtIncompatible("Array.newInstance(Class, int)")
+  @GwtIncompatible // Array.newInstance(Class, int)
   public static <T> T[] toArray(Iterable<? extends T> iterable, Class<T> type) {
-    Collection<? extends T> collection = toCollection(iterable);
-    T[] array = ObjectArrays.newArray(type, collection.size());
-    return collection.toArray(array);
+    return toArray(iterable, ObjectArrays.newArray(type, 0));
   }
 
   static <T> T[] toArray(Iterable<? extends T> iterable, T[] array) {
-    Collection<? extends T> collection = toCollection(iterable);
+    Collection<? extends T> collection = castOrCopyToCollection(iterable);
     return collection.toArray(array);
   }
 
@@ -324,7 +331,7 @@ public final class Iterables {
    *     have been copied
    */
   static Object[] toArray(Iterable<?> iterable) {
-    return toCollection(iterable).toArray();
+    return castOrCopyToCollection(iterable).toArray();
   }
 
   /**
@@ -332,7 +339,7 @@ public final class Iterables {
    * collection, it is returned. Otherwise, an {@link java.util.ArrayList} is
    * created with the contents of the iterable in the same iteration order.
    */
-  private static <E> Collection<E> toCollection(Iterable<E> iterable) {
+  private static <E> Collection<E> castOrCopyToCollection(Iterable<E> iterable) {
     return (iterable instanceof Collection)
         ? (Collection<E>) iterable
         : Lists.newArrayList(iterable.iterator());
@@ -574,42 +581,40 @@ public final class Iterables {
   }
 
   /**
-   * Returns the elements of {@code unfiltered} that satisfy a predicate. The
-   * resulting iterable's iterator does not support {@code remove()}.
+   * Returns the elements of {@code unfiltered} that satisfy the input predicate
+   * {@code retainIfTrue}. The resulting iterable's iterator does not support {@code remove()}.
    */
   @CheckReturnValue
   public static <T> Iterable<T> filter(
-      final Iterable<T> unfiltered, final Predicate<? super T> predicate) {
+      final Iterable<T> unfiltered, final Predicate<? super T> retainIfTrue) {
     checkNotNull(unfiltered);
-    checkNotNull(predicate);
+    checkNotNull(retainIfTrue);
     return new FluentIterable<T>() {
       @Override
       public Iterator<T> iterator() {
-        return Iterators.filter(unfiltered.iterator(), predicate);
+        return Iterators.filter(unfiltered.iterator(), retainIfTrue);
       }
     };
   }
 
   /**
-   * Returns all instances of class {@code type} in {@code unfiltered}. The
-   * returned iterable has elements whose class is {@code type} or a subclass of
-   * {@code type}. The returned iterable's iterator does not support
-   * {@code remove()}.
+   * Returns all elements in {@code unfiltered} that are of the type {@code desiredType}.
+   * The returned iterable's iterator does not support {@code remove()}.
    *
-   * @param unfiltered an iterable containing objects of any type
-   * @param type the type of elements desired
+   * @param unfiltered an iterable containing objects of any type, to be filtered on
+   * @param desiredType the type of elements desired in the result iterable
    * @return an unmodifiable iterable containing all elements of the original
    *     iterable that were of the requested type
    */
-  @GwtIncompatible("Class.isInstance")
+  @GwtIncompatible // Class.isInstance
   @CheckReturnValue
-  public static <T> Iterable<T> filter(final Iterable<?> unfiltered, final Class<T> type) {
+  public static <T> Iterable<T> filter(final Iterable<?> unfiltered, final Class<T> desiredType) {
     checkNotNull(unfiltered);
-    checkNotNull(type);
+    checkNotNull(desiredType);
     return new FluentIterable<T>() {
       @Override
       public Iterator<T> iterator() {
-        return Iterators.filter(unfiltered.iterator(), type);
+        return Iterators.filter(unfiltered.iterator(), desiredType);
       }
     };
   }

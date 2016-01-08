@@ -5,7 +5,7 @@
   <parent>
     <groupId>com.google.guava</groupId>
     <artifactId>guava-parent</artifactId>
-    <version>19.0-SNAPSHOT</version>
+    <version>20.0-SNAPSHOT</version>
   </parent>
   <artifactId>guava-gwt</artifactId>
   <name>Guava GWT compatible libs</name>
@@ -226,19 +226,13 @@
                 <copy toDir="${project.build.directory}/guava-gwt-sources"
                       verbose="true">
                   <fileset dir="${project.build.directory}/guava-sources">
-                    <and>
-                      <contains text="@GwtCompatible"/>
-                      <not><contains text="emulated = true"/></not>
-                    </and>
+                    <contains text="@GwtCompatible"/>
                   </fileset>
                 </copy>
                 <copy toDir="${project.build.directory}/guava-test-gwt-sources"
                       verbose="true">
                   <fileset dir="${project.build.directory}/guava-test-sources">
-                    <and>
-                      <contains text="@GwtCompatible"/>
-                      <not><contains text="emulated = true"/></not>
-                    </and>
+                    <contains text="@GwtCompatible"/>
                   </fileset>
                 </copy>
               </target>
@@ -307,6 +301,7 @@
               <includes>${gwt.test.include}</includes>
               <logLevel>${gwt.logLevel}</logLevel>
               <mode>htmlunit</mode>
+              <productionMode>true</productionMode>
               <testTimeOut>600</testTimeOut>
               <extraJvmArgs>-Xms3500m -Xmx3500m -Xss1024k</extraJvmArgs>
               <sourceLevel>1.7</sourceLevel>
